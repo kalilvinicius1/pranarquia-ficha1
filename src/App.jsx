@@ -142,19 +142,19 @@ const manifestationTypes = [
   { key: "archetypal", title: "Manifestações Arquetípicas", cost: "C: 7PR" },
 ];
 
-const defaultSheet = {
+const emptySheet = {
   version: 2,
   fields: {
-    characterName: "Samantha Gallagher",
+    characterName: "",
     lineage: "",
     bond: "",
     archetype: "",
     reverieTitle: "",
     reverieDescription: "",
-    conflict: "Mentira Fundamental",
+    conflict: "",
     conflictDescription: "",
     inventory: "",
-    xpTotal: 10,
+    xpTotal: 0,
     xpSpent: 0,
     typeDaemoi: false,
     typeCaalesi: false,
@@ -162,41 +162,41 @@ const defaultSheet = {
   },
   state: {
     attributes: {
-      force: 1,
-      reflexes: 2,
-      vigor: 3,
-      ego: 3,
-      intellect: 1,
-      intuition: 2,
-      charisma: 2,
-      faith: 4,
-      will: 3,
+      force: 0,
+      reflexes: 0,
+      vigor: 0,
+      ego: 0,
+      intellect: 0,
+      intuition: 0,
+      charisma: 0,
+      faith: 0,
+      will: 0,
     },
     skills: {
       acrobatics: 0,
       weapons: 0,
       athletics: 0,
       brawl: 0,
-      stealth: 2,
-      piloting: 1,
-      sleight: 2,
-      resistance: 2,
+      stealth: 0,
+      piloting: 0,
+      sleight: 0,
+      resistance: 0,
       cunning: 0,
       erudition: 0,
-      investigation: 1,
-      perception: 2,
+      investigation: 0,
+      perception: 0,
       intimidation: 0,
-      expression: 3,
+      expression: 0,
       medicine: 0,
-      subterfuge: 3,
+      subterfuge: 0,
       command: 0,
-      empathy: 1,
-      pranology: 5,
+      empathy: 0,
+      pranology: 0,
       persuasion: 0,
       manipulation: 0,
-      meditation: 3,
+      meditation: 0,
       occultism: 0,
-      potency: 1,
+      potency: 0,
     },
     specializations: {},
     openSpecialization: null,
@@ -216,6 +216,8 @@ const defaultSheet = {
     manifestations: {},
   },
 };
+
+const defaultSheet = clone(emptySheet);
 
 function clone(value) {
   return structuredClone(value);
@@ -920,7 +922,7 @@ function AuthPanel({ user, sheet, setSheet, setStatus }) {
   };
 
   const createNewSheet = () => {
-    setSheet(clone(defaultSheet));
+    setSheet(clone(emptySheet));
     setActiveSheetId("");
     setStatus("Nova ficha criada.");
   };

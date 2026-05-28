@@ -676,7 +676,7 @@ textarea:focus {
 }
 
 .inventory-field textarea {
-  min-height: 118px;
+  min-height: 210px;
 }
 
 .milestone-row {
