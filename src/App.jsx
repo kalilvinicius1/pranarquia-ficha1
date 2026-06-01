@@ -884,15 +884,16 @@ function AuthPanel({ user, sheet, setSheet, setStatus }) {
         .map((item) => {
           const data = item.data();
           const ownerId = item.ref.parent.parent?.id || data.ownerId || "";
-          return {
-            id: item.id,
-            ownerId,
-            ownerEmail: data.ownerEmail || ownerId,
-            title: data.fields?.characterName || "Ficha sem nome",
-            savedAt: data.savedAt || "",
-          };
-        })
-        .sort((first, second) => {
+        return {
+          id: item.id,
+          ownerId,
+          ownerEmail: data.ownerEmail || ownerId,
+          title: data.fields?.characterName || "Ficha sem nome",
+          savedAt: data.savedAt || "",
+        };
+      })
+      .filter((item) => item.ownerId !== user.uid)
+      .sort((first, second) => {
           const ownerOrder = first.ownerEmail.localeCompare(second.ownerEmail, "pt-BR");
           return ownerOrder || first.title.localeCompare(second.title, "pt-BR");
         });
