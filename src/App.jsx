@@ -1175,7 +1175,7 @@ function AuthPanel({ user, sheet, setSheet, setStatus }) {
                 <option value="">Selecione uma ficha</option>
                 {masterSheetList.map((item) => (
                   <option key={`${item.ownerId}/${item.id}`} value={`${item.ownerId}/${item.id}`}>
-                    {item.ownerEmail} - {item.title}
+                    {item.title}
                   </option>
                 ))}
               </select>
