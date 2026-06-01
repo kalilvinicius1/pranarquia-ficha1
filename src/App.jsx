@@ -1185,7 +1185,6 @@ function AuthPanel({ user, sheet, setSheet, setStatus }) {
             </button>
           </div>
         )}
-        <span className="account-id">ID da conta: {user.uid}</span>
       </section>
     );
   }

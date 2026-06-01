@@ -182,13 +182,6 @@ textarea {
   width: min(420px, 100%);
 }
 
-.account-id {
-  width: 100%;
-  color: var(--muted);
-  font-size: 0.74rem;
-  overflow-wrap: anywhere;
-}
-
 .sheet-picker {
   display: grid;
   grid-template-columns: auto minmax(180px, 260px);
