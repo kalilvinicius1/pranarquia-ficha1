@@ -43,20 +43,45 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function isMaster() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/masters/$(request.auth.uid));
+    }
+
+    match /masters/{masterId} {
+      allow read: if isOwner(masterId) || isMaster();
+      allow write: if false;
+    }
+
     match /users/{userId}/sheets/{sheetId} {
-      allow read, write: if request.auth != null
-        && request.auth.uid == userId;
+      allow read, write: if isOwner(userId) || isMaster();
     }
 
     match /sharedSheets/{shareId} {
       allow read: if true;
-      allow create: if request.auth != null
-        && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if request.auth != null
-        && resource.data.ownerId == request.auth.uid;
+      allow create: if signedIn()
+        && (request.resource.data.ownerId == request.auth.uid || isMaster());
+      allow update, delete: if signedIn()
+        && (resource.data.ownerId == request.auth.uid || isMaster());
     }
   }
 }
+```
+
+Para transformar uma conta em mestre, copie o ID exibido no painel da conta e crie manualmente no Firestore:
+
+```text
+Coleção: masters
+Documento: ID_DA_CONTA
+Campo sugerido: active = true
 ```
 
 ## Publicar

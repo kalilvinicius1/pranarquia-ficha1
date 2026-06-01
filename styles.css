@@ -118,7 +118,7 @@ textarea {
 }
 
 .auth-panel {
-  width: min(720px, 100%);
+  width: min(940px, 100%);
   margin: -8px auto 24px;
   padding: 10px 14px;
   border: 1px solid var(--soft-line);
@@ -153,6 +153,40 @@ textarea {
   flex-wrap: wrap;
   gap: 8px;
   justify-content: center;
+}
+
+.password-tools,
+.master-tools {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  padding-top: 8px;
+  border-top: 1px solid var(--soft-line);
+}
+
+.password-tools input {
+  width: min(190px, 100%);
+  border: 1px solid var(--line);
+  min-height: 32px;
+}
+
+.master-tools {
+  background: rgba(21, 21, 150, 0.06);
+  padding: 10px;
+}
+
+.master-select {
+  width: min(420px, 100%);
+}
+
+.account-id {
+  width: 100%;
+  color: var(--muted);
+  font-size: 0.74rem;
+  overflow-wrap: anywhere;
 }
 
 .sheet-picker {

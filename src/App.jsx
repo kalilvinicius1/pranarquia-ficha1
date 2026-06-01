@@ -2,17 +2,22 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   auth,
   collection,
+  collectionGroup,
   createUserWithEmailAndPassword,
   db,
   deleteDoc,
   doc,
+  EmailAuthProvider,
   getDoc,
   getDocs,
   isFirebaseConfigured,
   onAuthStateChanged,
+  reauthenticateWithCredential,
+  sendPasswordResetEmail,
   setDoc,
   signInWithEmailAndPassword,
   signOut,
+  updatePassword,
 } from "./firebase.js";
 
 const ATTRIBUTE_MAX = 7;
@@ -837,8 +842,14 @@ function AuthPanel({ user, sheet, setSheet, setStatus }) {
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [sheetList, setSheetList] = useState([]);
   const [activeSheetId, setActiveSheetId] = useState("");
+  const [activeOwnerId, setActiveOwnerId] = useState("");
+  const [activeOwnerEmail, setActiveOwnerEmail] = useState("");
+  const [isMaster, setIsMaster] = useState(false);
+  const [masterSheetList, setMasterSheetList] = useState([]);
 
   const refreshSheetList = async () => {
     if (!db || !user) {
@@ -861,9 +872,52 @@ function AuthPanel({ user, sheet, setSheet, setStatus }) {
     setSheetList(sheets);
   };
 
+  const refreshMasterSheetList = async () => {
+    if (!db || !user || !isMaster) {
+      setMasterSheetList([]);
+      return;
+    }
+
+    const snapshot = await getDocs(collectionGroup(db, "sheets"));
+    const sheets = snapshot.docs
+      .map((item) => {
+        const data = item.data();
+        const ownerId = item.ref.parent.parent?.id || data.ownerId || "";
+        return {
+          id: item.id,
+          ownerId,
+          ownerEmail: data.ownerEmail || ownerId,
+          title: data.fields?.characterName || "Ficha sem nome",
+          savedAt: data.savedAt || "",
+        };
+      })
+      .sort((first, second) => {
+        const ownerOrder = first.ownerEmail.localeCompare(second.ownerEmail, "pt-BR");
+        return ownerOrder || first.title.localeCompare(second.title, "pt-BR");
+      });
+
+    setMasterSheetList(sheets);
+  };
+
   useEffect(() => {
     refreshSheetList();
   }, [user]);
+
+  useEffect(() => {
+    if (!db || !user) {
+      setIsMaster(false);
+      setMasterSheetList([]);
+      return;
+    }
+
+    getDoc(doc(db, "masters", user.uid))
+      .then((snapshot) => setIsMaster(snapshot.exists()))
+      .catch(() => setIsMaster(false));
+  }, [user]);
+
+  useEffect(() => {
+    refreshMasterSheetList();
+  }, [isMaster, user]);
 
   const submit = async (event) => {
     event.preventDefault();
@@ -885,18 +939,57 @@ function AuthPanel({ user, sheet, setSheet, setStatus }) {
     }
   };
 
+  const sendResetEmail = async () => {
+    if (!auth || !email) {
+      setStatus("Digite o e-mail para recuperar a senha.");
+      return;
+    }
+
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setStatus("E-mail de recuperação enviado.");
+    } catch (error) {
+      setStatus(error.message || "Não foi possível enviar a recuperação.");
+    }
+  };
+
+  const changePassword = async () => {
+    if (!auth?.currentUser || !currentPassword || !newPassword) {
+      setStatus("Preencha a senha atual e a nova senha.");
+      return;
+    }
+
+    try {
+      const credential = EmailAuthProvider.credential(auth.currentUser.email, currentPassword);
+      await reauthenticateWithCredential(auth.currentUser, credential);
+      await updatePassword(auth.currentUser, newPassword);
+      setCurrentPassword("");
+      setNewPassword("");
+      setStatus("Senha alterada.");
+    } catch (error) {
+      setStatus(error.message || "Não foi possível alterar a senha.");
+    }
+  };
+
   const saveCloud = async () => {
     if (!db || !user) {
       return;
     }
     const id = activeSheetId || crypto.randomUUID();
-    await setDoc(doc(db, "users", user.uid, "sheets", id), {
+    const ownerId = activeOwnerId || user.uid;
+    const ownerEmail = activeOwnerEmail || user.email;
+    await setDoc(doc(db, "users", ownerId, "sheets", id), {
       ...sheet,
       id,
+      ownerId,
+      ownerEmail,
       savedAt: new Date().toISOString(),
     });
     setActiveSheetId(id);
+    setActiveOwnerId(ownerId);
+    setActiveOwnerEmail(ownerEmail);
     await refreshSheetList();
+    await refreshMasterSheetList();
     setStatus("Ficha salva na nuvem.");
   };
 
@@ -911,7 +1004,27 @@ function AuthPanel({ user, sheet, setSheet, setStatus }) {
     }
     setSheet(normalizeSheet(snapshot.data()));
     setActiveSheetId(id);
+    setActiveOwnerId(user.uid);
+    setActiveOwnerEmail(user.email);
     setStatus("Ficha carregada da nuvem.");
+  };
+
+  const loadMasterSheet = async (item) => {
+    if (!db || !user || !isMaster || !item?.ownerId || !item?.id) {
+      return;
+    }
+
+    const snapshot = await getDoc(doc(db, "users", item.ownerId, "sheets", item.id));
+    if (!snapshot.exists()) {
+      setStatus("Ficha do jogador não encontrada.");
+      return;
+    }
+
+    setSheet(normalizeSheet(snapshot.data()));
+    setActiveSheetId(item.id);
+    setActiveOwnerId(item.ownerId);
+    setActiveOwnerEmail(item.ownerEmail);
+    setStatus(`Ficha de ${item.ownerEmail} carregada.`);
   };
 
   const selectCloudSheet = (id) => {
@@ -924,6 +1037,8 @@ function AuthPanel({ user, sheet, setSheet, setStatus }) {
   const createNewSheet = () => {
     setSheet(clone(emptySheet));
     setActiveSheetId("");
+    setActiveOwnerId("");
+    setActiveOwnerEmail("");
     setStatus("Nova ficha criada.");
   };
 
@@ -932,9 +1047,13 @@ function AuthPanel({ user, sheet, setSheet, setStatus }) {
       return;
     }
 
-    await deleteDoc(doc(db, "users", user.uid, "sheets", activeSheetId));
+    const ownerId = activeOwnerId || user.uid;
+    await deleteDoc(doc(db, "users", ownerId, "sheets", activeSheetId));
     setActiveSheetId("");
+    setActiveOwnerId("");
+    setActiveOwnerEmail("");
     await refreshSheetList();
+    await refreshMasterSheetList();
     setStatus("Ficha removida da nuvem.");
   };
 
@@ -947,12 +1066,16 @@ function AuthPanel({ user, sheet, setSheet, setStatus }) {
     const sheetData = {
       ...sheet,
       id,
+      ownerId: activeOwnerId || user.uid,
+      ownerEmail: activeOwnerEmail || user.email,
       savedAt: new Date().toISOString(),
     };
 
     if (!activeSheetId) {
       await setDoc(doc(db, "users", user.uid, "sheets", id), sheetData);
       setActiveSheetId(id);
+      setActiveOwnerId(user.uid);
+      setActiveOwnerEmail(user.email);
       await refreshSheetList();
     }
 
@@ -1018,6 +1141,44 @@ function AuthPanel({ user, sheet, setSheet, setStatus }) {
             Sair
           </button>
         </div>
+        <div className="password-tools">
+          <strong>Senha</strong>
+          <input type="password" value={currentPassword} placeholder="Senha atual" onChange={(event) => setCurrentPassword(event.target.value)} />
+          <input type="password" value={newPassword} placeholder="Nova senha" minLength="6" onChange={(event) => setNewPassword(event.target.value)} />
+          <button className="action-button" type="button" onClick={changePassword}>
+            Alterar senha
+          </button>
+        </div>
+        {isMaster && (
+          <div className="master-tools">
+            <strong>Perfil de Mestre</strong>
+            <label className="sheet-picker">
+              <span>Fichas dos jogadores</span>
+              <select
+                className="sheet-select master-select"
+                value={activeOwnerId && activeSheetId ? `${activeOwnerId}/${activeSheetId}` : ""}
+                onChange={(event) => {
+                  const selected = masterSheetList.find((item) => `${item.ownerId}/${item.id}` === event.target.value);
+                  if (selected) {
+                    loadMasterSheet(selected);
+                  }
+                }}
+                aria-label="Selecionar ficha de jogador"
+              >
+                <option value="">Selecione uma ficha</option>
+                {masterSheetList.map((item) => (
+                  <option key={`${item.ownerId}/${item.id}`} value={`${item.ownerId}/${item.id}`}>
+                    {item.ownerEmail} - {item.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button className="action-button" type="button" onClick={refreshMasterSheetList}>
+              Atualizar lista
+            </button>
+          </div>
+        )}
+        <span className="account-id">ID da conta: {user.uid}</span>
       </section>
     );
   }
@@ -1033,6 +1194,9 @@ function AuthPanel({ user, sheet, setSheet, setStatus }) {
         </button>
         <button className="action-button" type="button" onClick={() => setMode(mode === "signup" ? "login" : "signup")}>
           {mode === "signup" ? "Já tenho conta" : "Criar conta"}
+        </button>
+        <button className="action-button" type="button" onClick={sendResetEmail}>
+          Recuperar senha
         </button>
       </div>
     </form>

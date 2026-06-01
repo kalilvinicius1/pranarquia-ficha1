@@ -1,12 +1,16 @@
 import { initializeApp } from "firebase/app";
 import {
   createUserWithEmailAndPassword,
+  EmailAuthProvider,
   getAuth,
   onAuthStateChanged,
+  reauthenticateWithCredential,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
+  updatePassword,
 } from "firebase/auth";
-import { collection, deleteDoc, doc, getDoc, getDocs, getFirestore, setDoc } from "firebase/firestore";
+import { collection, collectionGroup, deleteDoc, doc, getDoc, getDocs, getFirestore, setDoc } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -25,13 +29,18 @@ export const db = app ? getFirestore(app) : null;
 
 export {
   collection,
+  collectionGroup,
   createUserWithEmailAndPassword,
   deleteDoc,
   doc,
+  EmailAuthProvider,
   getDoc,
   getDocs,
   onAuthStateChanged,
+  reauthenticateWithCredential,
+  sendPasswordResetEmail,
   setDoc,
   signInWithEmailAndPassword,
   signOut,
+  updatePassword,
 };
