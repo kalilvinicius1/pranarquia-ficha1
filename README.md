@@ -65,6 +65,10 @@ service cloud.firestore {
       allow read, write: if isOwner(userId) || isMaster();
     }
 
+    match /{path=**}/sheets/{sheetId} {
+      allow read: if isMaster();
+    }
+
     match /sharedSheets/{shareId} {
       allow read: if true;
       allow create: if signedIn()

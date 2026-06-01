@@ -878,25 +878,31 @@ function AuthPanel({ user, sheet, setSheet, setStatus }) {
       return;
     }
 
-    const snapshot = await getDocs(collectionGroup(db, "sheets"));
-    const sheets = snapshot.docs
-      .map((item) => {
-        const data = item.data();
-        const ownerId = item.ref.parent.parent?.id || data.ownerId || "";
-        return {
-          id: item.id,
-          ownerId,
-          ownerEmail: data.ownerEmail || ownerId,
-          title: data.fields?.characterName || "Ficha sem nome",
-          savedAt: data.savedAt || "",
-        };
-      })
-      .sort((first, second) => {
-        const ownerOrder = first.ownerEmail.localeCompare(second.ownerEmail, "pt-BR");
-        return ownerOrder || first.title.localeCompare(second.title, "pt-BR");
-      });
+    try {
+      const snapshot = await getDocs(collectionGroup(db, "sheets"));
+      const sheets = snapshot.docs
+        .map((item) => {
+          const data = item.data();
+          const ownerId = item.ref.parent.parent?.id || data.ownerId || "";
+          return {
+            id: item.id,
+            ownerId,
+            ownerEmail: data.ownerEmail || ownerId,
+            title: data.fields?.characterName || "Ficha sem nome",
+            savedAt: data.savedAt || "",
+          };
+        })
+        .sort((first, second) => {
+          const ownerOrder = first.ownerEmail.localeCompare(second.ownerEmail, "pt-BR");
+          return ownerOrder || first.title.localeCompare(second.title, "pt-BR");
+        });
 
-    setMasterSheetList(sheets);
+      setMasterSheetList(sheets);
+      setStatus(sheets.length ? `${sheets.length} ficha(s) encontradas.` : "Nenhuma ficha salva na nuvem ainda.");
+    } catch (error) {
+      setMasterSheetList([]);
+      setStatus("Sem permissão para listar fichas. Atualize as regras do Firestore.");
+    }
   };
 
   useEffect(() => {
